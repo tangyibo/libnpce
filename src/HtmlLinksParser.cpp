@@ -1,0 +1,133 @@
+/*
+ * HtmlLinksParser.cpp
+ *
+ *  Created: 2016年8月23日
+ *   Author: tang
+ */
+
+#include "HtmlLinksParser.h"
+#include "tidy/tidy.h"
+#include "tidy/tidybuffio.h"
+#include "utils/HttpURL.h"
+#include "utils/TimerClock.h"
+#include "utils/UtilFun.h"
+#include "regexapi/regexhelper.h"
+#include "htmlcxx/ParserDom.h"
+#include "HtmlCleaner.h"
+#include "HtmlContentParser.h"
+
+using namespace htmlcxx;
+
+NpceCode CHtmlLinksParser::ParseHtmlLinks(const char *html,const char *url,bool anchor,vector< pair<string,string> > &results)
+{
+	return CHtmlLinksParser::ParseHtmlLinksFilter(html,url,NULL,anchor,results);
+}
+
+NpceCode CHtmlLinksParser::ParseHtmlIframeLinks(const char *html,const char *url,vector<string> &links)
+{
+	string errmsg;
+	string src(html);
+	if(!CHtmlCleaner::HtmlTidy(src,errmsg))
+		return NPCE_CODE_TIDY_HTML_FAILED;
+
+	htmlcxx::HTML::ParserDom parser;
+	tree<HTML::Node> dom = parser.parseTree(src);
+	if(dom.size()==0)
+	{
+		errmsg="Parse DOM failed,DOM size equal 0 !";
+		return NPCE_CODE_INVALID_HTML_DOM;
+	}
+
+	tree<HTML::Node>::iterator it = dom.begin();
+	tree<HTML::Node>::iterator parent;
+	CHttpURL convert(url);
+
+	for(it = dom.begin(); it != dom.end(); ++it)
+	{
+		if( it->isTag() && 
+		(str_nocase_equal(it->tagName(),"iframe") || strcasecmp(it->tagName().c_str(), "frame") == 0) )
+		{
+			it->parseAttributes();
+			if(it->attribute("src").first)
+			{
+				string src_url=it->attribute("src").second;
+				Utils::Trim(src_url);
+				Utils::ReplaceAll(src_url,"&amp;","&");
+				if(!src_url.empty() || "#"!=src_url)
+				{
+					string absurl=convert.toAbsolute(src_url);
+					links.push_back(absurl);
+				}
+			}
+		}
+	}//for
+
+	return NPCE_CODE_OK;
+}
+
+NpceCode CHtmlLinksParser::ParseHtmlLinksFilter(const char *html,const char *url,const char *regex,bool anchor,vector< pair<string,string> > &results)
+{
+	string errmsg;
+	string src(html);
+	if(!CHtmlCleaner::HtmlTidy(src,errmsg))
+		return NPCE_CODE_TIDY_HTML_FAILED;
+
+	htmlcxx::HTML::ParserDom parser;
+	tree<HTML::Node> dom = parser.parseTree(src);
+	if(dom.size()==0)
+	{
+		errmsg="Parse DOM failed,DOM size equal 0 !";
+		return NPCE_CODE_INVALID_HTML_DOM;
+	}
+
+	tree<HTML::Node>::iterator it = dom.begin();
+	tree<HTML::Node>::iterator parent;
+	CHttpURL convert(url);
+
+	for(it = dom.begin(); it != dom.end(); ++it)
+	{
+		if( it->isTag() && str_nocase_equal(it->tagName(),"a"))
+		{
+			it->parseAttributes();
+			if(it->attribute("href").first)
+			{
+				string src_url=it->attribute("href").second;
+				Utils::Trim(src_url);
+				Utils::ReplaceAll(src_url,"&amp;","&");
+				if(!src_url.empty() || "#"!=src_url)
+				{
+					string absurl=convert.toAbsolute(src_url);
+					string anchortext="";
+
+					if(NULL!=regex && !RegexAPI::RegexHelper::IsMatch(absurl.c_str(),regex))
+						continue;
+
+					if(anchor)
+					{
+						try{
+							tree<HTML::Node>::sibling_iterator it_begin=it;
+							tree<HTML::Node>::sibling_iterator it_ends=dom.next_sibling(it);
+							tree<HTML::Node> linktree=dom.subtree(it_begin,it_ends);
+							for(tree<HTML::Node>::iterator iter=linktree.begin();iter!=linktree.end();++iter)
+							{
+								if(!iter->isComment() && !iter->isTag())
+								{
+									string txt=iter->text();
+									Utils::Trim(txt);
+									anchortext.append(txt);
+								}
+							}
+						}catch(...){}
+					}
+
+					pair<string,string> item;
+					item.first=absurl;
+					item.second=anchortext;
+					results.push_back(item);
+				}
+			}
+		}
+	}//for
+
+	return NPCE_CODE_OK;
+}
