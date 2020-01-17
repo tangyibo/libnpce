@@ -46,23 +46,12 @@
 ```
 
   其他编译选项详见Makefile文件
- 3、使用示例
- 
-```
-  #./run.sh  http://finance.qq.com/a/20160819/023677.htm
-```
   
-  执行上述命令即可查看到抽取的正文等信息。
+说明
+-----
+博客宣传地址：https://blog.csdn.net/inrgihc/article/details/103739874
 
+项目文档地址：https://tangyibo.github.io/libariry/2020/01/17/a-news-passage-content-extractor-library/
 
-存在问题
---------
-- 问题一：使用tidy库整理后即可抽取正确,例如：http://www.huaxia.com/xw/zhxw/2017/04/5283628.html
-- 问题二：未知的抽取错误，例如：http://news.workercn.cn/607/201708/09/170809020943659.shtml
-- 问题三：对于JS渲染的页面问题,需要借助第三方工具获取到渲染后的html文本页面,例如：
+项目gitee地址：https://gitee.com/inrgihc/libnpce
 
-```
-./run.sh
-"http://10.20.18.8:8050/render.html?url=
-http%3a%2f%2fwww.hsnewsn.com%2fInfo.aspx%3fModelId%3d1%26Id%3d34575&timeout=60&wait=10"
-```
