@@ -1,5 +1,10 @@
 # libnpce
 
+**项目地址：**
+
+- Github: https://github.com/tangyibo/libnpce
+
+- Gitee: https://gitee.com/inrgihc/libnpce
 
 介绍
 -------
